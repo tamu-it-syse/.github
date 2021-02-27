@@ -1,0 +1,11 @@
+{
+    "name": "tamu-it-syse RPM Build CI",
+    "description": "TAMU Systems Engineering RPM Build CI workflow template.",
+    "iconName": "tamu-logo",
+    "categories": [
+        "Python"
+    ],
+    "filePatterns": [
+        "^rpm-config.json$"
+    ]
+}
