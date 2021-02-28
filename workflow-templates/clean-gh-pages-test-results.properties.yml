@@ -3,6 +3,7 @@
     "description": "TAMU Systems Engineering GitHub Pages Cleanup workflow template.",
     "iconName": "tamu-logo",
     "categories": [
-        "Markdown"
+        "Markdown",
+        "Python"
     ]
 }
