@@ -1,0 +1,9 @@
+{
+    "name": "tamu-it-syse GitHub Pages Cleanup",
+    "description": "TAMU Systems Engineering GitHub Pages Cleanup workflow template.",
+    "iconName": "tamu-logo",
+    "categories": [
+        "Markdown",
+        "Python"
+    ]
+}
