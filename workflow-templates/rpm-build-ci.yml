@@ -43,21 +43,21 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Checkout CAS Client
-      if: env.INCLUDE_CAS_CLIENT == "Y"
+      if: env.INCLUDE_CAS_CLIENT == 'Y'
       uses: actions/checkout@v2
       with:
         repository: tamu-it-syse/tamucas-client
         ssh-key: ${{ secrets.TAMUCAS_CLIENT_DEPLOY_KEY }}
         path: tamucas-client
     - name: Checkout Gateway-Services
-      if: env.INCLUDE_GATEWAY_SERVICES == "Y"
+      if: env.INCLUDE_GATEWAY_SERVICES == 'Y'
       uses: actions/checkout@v2
       with:
         repository: tamu-it-syse/Gateway-Services
         ssh-key: ${{ secrets.GATEWAY_SERVICES_DEPLOY_KEY }}
         path: Gateway-Services
     - name: Checkout TAMU-Account
-      if: env.INCLUDE_TAMU_ACCOUNT == "Y"
+      if: env.INCLUDE_TAMU_ACCOUNT == 'Y'
       uses: actions/checkout@v2
       with:
         repository: tamu-it-syse/tamu-account
@@ -70,13 +70,13 @@ jobs:
     - name: Install Dependencies
       run: venv/bin/pipenv install
     - name: Install CAS Client
-      if: env.INCLUDE_CAS_CLIENT == "Y"
+      if: env.INCLUDE_CAS_CLIENT == 'Y'
       run: venv/bin/pip install ./tamucas-client
     - name: Install TAMU Account Library
-      if: env.INCLUDE_TAMU_ACCOUNT == "Y"
+      if: env.INCLUDE_TAMU_ACCOUNT == 'Y'
       run: venv/bin/pip install ./tamu-account
     - name: Install Gateway Services Templates
-      if: env.INCLUDE_GATEWAY_SERVICES == "Y"
+      if: env.INCLUDE_GATEWAY_SERVICES == 'Y'
       run: venv/bin/pip install ./Gateway-Services
     - name: Install Application
       run: |
