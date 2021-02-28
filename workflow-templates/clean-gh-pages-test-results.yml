@@ -1,0 +1,24 @@
+name: Clean
+
+on: [delete]
+
+jobs:
+  clean:
+    runs-on: [self-hosted]
+    env:
+      GITHUB_EVENT_REF: ${{ github.event.ref }}
+    steps:
+    - name: Checkout gh-pages
+      uses: actions/checkout@v2
+      with:
+        ref: refs/heads/gh-pages
+        path: .gh-pages
+    - name: Publish Test Results
+      run: |
+        cd .gh-pages
+        rm -f _branches/$GITHUB_EVENT_REF.md
+        rm -rf $GITHUB_EVENT_REF
+        git config user.name $GITHUB_ACTOR
+        git config user.email $USERNAME@$HOSTNAME
+        git commit -am "Cleaning up deleted ref $GITHUB_EVENT_REF"
+        git push
