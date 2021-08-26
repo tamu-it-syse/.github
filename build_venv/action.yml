@@ -9,10 +9,12 @@ runs:
   steps:
     - uses: actions/checkout@v2
     - name: Create Virtual Environment
+      shell: bash
       run: |
         python3 -m venv venv
         venv/bin/pip install --upgrade pip pipenv
     - name: Install Dependencies
+      shell: bash
       run: |
         venv/bin/pipenv install
         if [ -d tamucas-client ]
@@ -28,10 +30,12 @@ runs:
           venv/bin/pip install ./Gateway-Services
         fi
     - name: Install Application
+      shell: bash
       run: |
         venv/bin/pip install .
         git log --pretty=format:"%s%n%b" > venv/RELEASE-NOTES.txt
     - name: Create tarball for venv
+      shell: bash
       run: tar -cJf venv.tar.xz venv
     - name: Save venv as artifact
       uses: actions/upload-artifact@v2
@@ -39,4 +43,5 @@ runs:
         name: venv
         path: venv.tar.xz
     - name: Fix permissions if building inside docker container
+      shell: bash
       run: if [ ! -z "${{ inputs.runner-user }}" ] ; then chown -R ${{ inputs.runner-user }} . ; fi

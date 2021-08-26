@@ -13,11 +13,14 @@ inputs:
       with:
         name: venv
     - name: Untar venv
+      shell: bash
       run: tar -xf venv.tar.xz
     - name: Name Unstable RPM
+      shell: bash
       run: |
         sed -i "s|__NAME__|$RPM_NAME-unstable|" rpm-config.json    
     - name: Build RPM
+      shell: bash
       run: |
         sed -i "s|__BUILD_NUMBER__|$GITHUB_RUN_NUMBER|" rpm-config.json
         sed -i "s|__VERSION_NUMBER__|`python setup.py --version`|" rpm-config.json
@@ -30,4 +33,5 @@ inputs:
         name: ${{ inputs.rpm-name }}.rpm
         path: ${{ inputs.rpm-name }}*.rpm
     - name: Fix Permissions
+      shell: bash
       run: if [ ! -z "${{ inputs.runner-user }}" ] ; then chown -R ${{ inputs.runner-user }} . ; fi

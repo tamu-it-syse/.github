@@ -12,18 +12,23 @@ runs:
       with:
         name: venv
     - name: Untar venv
+      shell: bash
       run: tar -xf venv.tar.xz
     - name: Install testing packages
+      shell: bash
       run: |
         venv/bin/pip install flake8 flake8-dashboard coverage
     - name: Run migration
+      shell: bash
       run: |
         venv/bin/python manage.py migrate
     - name: Run test coverage
+      shell: bash
       run: |
         venv/bin/coverage run --source="./$APPLICATION_PATH" manage.py test --keepdb --no-input
         venv/bin/coverage html -d coverage_html
     - name: Static analysis with flake8
+      shell: bash
       run: |
         venv/bin/flake8 --format=dashboard --outputdir=flake8_html --title="$APPLICATION_NAME" $APPLICATION_PATH || true
     - name: Checkout gh-pages
@@ -32,6 +37,7 @@ runs:
         ref: refs/heads/gh-pages
         path: .gh-pages
     - name: Publish Test Results
+      shell: bash
       run: |
         cd .gh-pages
         GITHUB_BRANCH=$(echo $GITHUB_REF | awk -F/ '{out=$3; for(i=4;i<=NF;i++){out=out"_"$i}; print out}')
@@ -61,4 +67,5 @@ runs:
         git commit -m "Publishing Test Results for Action #$GITHUB_RUN_NUMBER"
         git push
     - name: Fix Permissions
+      shell: bash
       run: if [ ! -z "${{ inputs.runner-user }}" ] ; then chown -R ${{ inputs.runner-user }} . ; fi

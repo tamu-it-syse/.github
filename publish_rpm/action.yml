@@ -17,6 +17,7 @@ inputs:
     - name: Set up RPM publishing keys
       env:
         REPO_DEPLOY_KEY: ${{ inputs.repo-deploy-key }}
+      shell: bash
       run: |
         mkdir -p "${TMP_DIR}/${GITHUB_RUN_ID}/.ssh"
         echo "$REPO_DEPLOY_KEY" > "${TMP_DIR}/${GITHUB_RUN_ID}/.ssh/repo-deploy-key"
@@ -25,6 +26,7 @@ inputs:
     - name: Publish RPM
       env:
         RPM_SIGNING_PASSWORD: ${{ inputs.rpm-signing-password }}
+      shell: bash
       run: |
         for rpm in `ls *.rpm`
         do
