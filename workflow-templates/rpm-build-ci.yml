@@ -137,7 +137,7 @@ jobs:
       with:
         repo-deploy-key: ${{ secrets.REPO_DEPLOY_KEY }}
         rpm-signing-password: ${{ secrets.RPM_SIGNING_PASSWORD }}
-        rpm-name: ${{ RPM_NAME }}
+        rpm-name: ${{ env.RPM_NAME }}
     - name: Cleaning up
       if: ${{ always() }}
       run: |
