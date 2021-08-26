@@ -34,12 +34,12 @@ jobs:
     runs-on: [self-hosted, linux, docker]
     needs: [prep]
     container:
-      image: docker.pkg.github.com/jzylks/centos-django-rpm:latest
+      image: ghcr.io/jzylks/centos-django-rpm:latest
       volumes:
         - ${{ github.workspace }}:/data
       credentials:
         username: ${{ github.actor }}
-        password: ${{ secrets.CR_PAT }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
     - uses: actions/checkout@v2
     - name: Checkout CAS Client
@@ -66,12 +66,12 @@ jobs:
     runs-on: [self-hosted, linux, docker]
     needs: [prep, build]
     container:
-      image: docker.pkg.github.com/jzylks/centos-django-rpm:latest
+      image: ghcr.io/jzylks/centos-django-rpm:latest
       volumes:
         - ${{ github.workspace }}:/data
       credentials:
         username: ${{ github.actor }}
-        password: ${{ secrets.CR_PAT }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
     - uses: tamu-it-syse/.github/test_django@v1
       with:
@@ -84,12 +84,12 @@ jobs:
     environment:
       name: Staging
     container:
-      image: docker.pkg.github.com/jzylks/centos-django-rpm:latest
+      image: ghcr.io/jzylks/centos-django-rpm:latest
       volumes:
         - ${{ github.workspace }}:/data
       credentials:
         username: ${{ github.actor }}
-        password: ${{ secrets.CR_PAT }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
     - uses: tamu-it-syse/.github/build_rpm@v1
       with:
@@ -117,12 +117,12 @@ jobs:
     environment:
       name: Production
     container:
-      image: docker.pkg.github.com/jzylks/centos-django-rpm:latest
+      image: ghcr.io/jzylks/centos-django-rpm:latest
       volumes:
         - ${{ github.workspace }}:/data
       credentials:
         username: ${{ github.actor }}
-        password: ${{ secrets.CR_PAT }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
     - uses: tamu-it-syse/.github/build_rpm@v1
       with:
