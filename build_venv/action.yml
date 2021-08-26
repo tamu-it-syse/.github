@@ -1,0 +1,42 @@
+name: "Build venv"
+description: "Build a Python3 virtual environment, install the application and dependencies, and save the venv as an artifact"
+inputs:
+  runner-user:
+    description: "User ID of the github runner. Used to correct permissions when executing commands inside Docker container."
+    required: false
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v2
+    - name: Create Virtual Environment
+      run: |
+        python3 -m venv venv
+        venv/bin/pip install --upgrade pip pipenv
+    - name: Install Dependencies
+      run: |
+        venv/bin/pipenv install
+        if [ -d tamucas-client ]
+        then 
+          venv/bin/pip install ./tamucas-client
+        fi
+        if [ -d tamu-account ]
+        then
+          venv/bin/pip install ./tamu-account
+        fi
+        if [ -d Gateway-Services ]
+        then
+          venv/bin/pip install ./Gateway-Services
+        fi
+    - name: Install Application
+      run: |
+        venv/bin/pip install .
+        git log --pretty=format:"%s%n%b" > venv/RELEASE-NOTES.txt
+    - name: Create tarball for venv
+      run: tar -cJf venv.tar.xz venv
+    - name: Save venv as artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: venv
+        path: venv.tar.xz
+    - name: Fix permissions if building inside docker container
+      run: if [ ! -z "${{ inputs.runner-user }}" ] ; then chown -R ${{ inputs.runner-user }} . ; fi

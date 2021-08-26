@@ -1,0 +1,33 @@
+name: Build RPM
+description: Build an RPM to install the venv on CentOS
+inputs:
+  rpm-name:
+    description: Name of the rpm file. This should include -unstable for staging RPMs, but not the .rpm extension.
+    required: true
+  runner-user:
+    description: "User ID of the github runner. Used to correct permissions when executing commands inside Docker container."
+    required: false
+- uses: actions/checkout@v2
+    - name: Download venv artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: venv
+    - name: Untar venv
+      run: tar -xf venv.tar.xz
+    - name: Name Unstable RPM
+      run: |
+        sed -i "s|__NAME__|$RPM_NAME-unstable|" rpm-config.json    
+    - name: Build RPM
+      run: |
+        sed -i "s|__BUILD_NUMBER__|$GITHUB_RUN_NUMBER|" rpm-config.json
+        sed -i "s|__VERSION_NUMBER__|`python setup.py --version`|" rpm-config.json
+        sed -i "s|__VENV_DIR__|$(pwd)/venv|" rpm-config.json
+        venvctrl-relocate --source=$(pwd)/venv --destination=/usr/share/python/$RPM_NAME
+        rpmvenv rpm-config.json
+    - name: Save RPM as artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ inputs.rpm-name }}.rpm
+        path: ${{ inputs.rpm-name }}*.rpm
+    - name: Fix Permissions
+      run: if [ ! -z "${{ inputs.runner-user }}" ] ; then chown -R ${{ inputs.runner-user }} . ; fi

@@ -1,0 +1,14 @@
+name: "Checkout CAS Client"
+description: "Check out CAS Client"
+inputs:
+  ssh-key:
+    description: "SSH Key to use to connect to GitHub"
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: tamu-it-syse/tamucas-client
+        ssh-key: ${{ inputs.ssh-key }}
+        path: tamucas-client

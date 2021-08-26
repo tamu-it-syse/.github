@@ -1,0 +1,14 @@
+name: "Checkout tamu-account library"
+description: "Checkout tamu-account-library"
+inputs:
+  ssh-key:
+    description: "SSH Key to use to connect to GitHub"
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: tamu-it-syse/tamu-account
+        ssh-key: ${{ inputs.ssh-key }}
+        path: tamu-account

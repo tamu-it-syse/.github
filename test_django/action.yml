@@ -1,0 +1,64 @@
+name: Test Django
+description: Install testing packages and execute tests with Django
+inputs:
+  runner-user:
+    description: "User ID of the github runner. Used to correct permissions when executing commands inside Docker container."
+    required: false
+runs:
+  using: composite
+  steps:
+    - name: Download venv artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: venv
+    - name: Untar venv
+      run: tar -xf venv.tar.xz
+    - name: Install testing packages
+      run: |
+        venv/bin/pip install flake8 flake8-dashboard coverage
+    - name: Run migration
+      run: |
+        venv/bin/python manage.py migrate
+    - name: Run test coverage
+      run: |
+        venv/bin/coverage run --source="./$APPLICATION_PATH" manage.py test --keepdb --no-input
+        venv/bin/coverage html -d coverage_html
+    - name: Static analysis with flake8
+      run: |
+        venv/bin/flake8 --format=dashboard --outputdir=flake8_html --title="$APPLICATION_NAME" $APPLICATION_PATH || true
+    - name: Checkout gh-pages
+      uses: actions/checkout@v2
+      with:
+        ref: refs/heads/gh-pages
+        path: .gh-pages
+    - name: Publish Test Results
+      run: |
+        cd .gh-pages
+        GITHUB_BRANCH=$(echo $GITHUB_REF | awk -F/ '{out=$3; for(i=4;i<=NF;i++){out=out"_"$i}; print out}')
+
+        # Create branch collection item
+        mkdir -p _branches
+        cat >_branches/$GITHUB_BRANCH.md <<EOL
+        ---
+        name: $GITHUB_BRANCH
+        date: $(date)
+        ---
+        Branch $GITHUB_BRANCH reports built with GitHub Actions
+        EOL
+
+        # Remove existing branch directory (fail silently) and recreate branch directory
+        rm -rf $GITHUB_BRANCH || true
+        mkdir $GITHUB_BRANCH
+        
+        # Move report directories into branch directory
+        mv ../flake8_html $GITHUB_BRANCH/flake8
+        mv ../coverage_html $GITHUB_BRANCH/coverage
+
+        # Commit all changes and push to gh-pages branch
+        git config user.name $GITHUB_ACTOR
+        git config user.email $USERNAME@$HOSTNAME
+        git add .
+        git commit -m "Publishing Test Results for Action #$GITHUB_RUN_NUMBER"
+        git push
+    - name: Fix Permissions
+      run: if [ ! -z "${{ inputs.runner-user }}" ] ; then chown -R ${{ inputs.runner-user }} . ; fi

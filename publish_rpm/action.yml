@@ -1,0 +1,33 @@
+name: Publish RPM to Repo
+description: Publish RPM to repository. This MUST be followed by a step that always runs and removes the .ssh directory.
+inputs:
+  rpm-signing-password:
+    description: RPM signing password
+    required: true
+  repo-deploy-key:
+    description: SSH Key used to copy RPM to the repository
+    required: true
+  rpm-name:
+    description: Name of the rpm file. This should include -unstable for staging RPMs, but not the .rpm extension.
+    required: true
+  - name: Download RPM artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: ${{ inputs.rpm-name }}.rpm
+    - name: Set up RPM publishing keys
+      env:
+        REPO_DEPLOY_KEY: ${{ inputs.repo-deploy-key }}
+      run: |
+        mkdir -p "${TMP_DIR}/${GITHUB_RUN_ID}/.ssh"
+        echo "$REPO_DEPLOY_KEY" > "${TMP_DIR}/${GITHUB_RUN_ID}/.ssh/repo-deploy-key"
+        chmod 700 ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh
+        chmod 600 ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh/*
+    - name: Publish RPM
+      env:
+        RPM_SIGNING_PASSWORD: ${{ inputs.rpm-signing-password }}
+      run: |
+        for rpm in `ls *.rpm`
+        do
+          scp -i ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh/repo-deploy-key *.rpm ${REPO_USER}@${REPO_SERVER}:~/rpms/
+          ssh -i ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh/repo-deploy-key ${REPO_USER}@${REPO_SERVER} "~/sign_rpm.sh ~/rpms/${rpm} ${RPM_SIGNING_PASSWORD} && mv ~/rpms/${rpm} ~/signed-rpms/"
+        done

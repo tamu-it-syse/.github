@@ -22,13 +22,13 @@ jobs:
   prep:
     runs-on: [self-hosted, linux, docker]
     outputs:
-      docker_user: ${{ steps.step1.outputs.docker_user }}
+      runner-user: ${{ steps.step1.outputs.runner-user }}
     steps:
     - name: Get Runner User for use in Docker
       id: step1
       run: |
-        DOCKER_USER=$(id -u)
-        echo "::set-output name=docker_user::$DOCKER_USER"
+        RUNNER_USER=$(id -u)
+        echo "::set-output name=runner-user::$RUNNER_USER"
 
   build:
     runs-on: [self-hosted, linux, docker]
@@ -41,57 +41,26 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT }}
     steps:
-    - uses: actions/checkout@v2
     - name: Checkout CAS Client
       if: env.INCLUDE_CAS_CLIENT == 'Y'
-      uses: actions/checkout@v2
+      uses: tamu-it-syse/.github/checkout/tamucas-client@v1
       with:
-        repository: tamu-it-syse/tamucas-client
         ssh-key: ${{ secrets.TAMUCAS_CLIENT_DEPLOY_KEY }}
-        path: tamucas-client
     - name: Checkout Gateway-Services
       if: env.INCLUDE_GATEWAY_SERVICES == 'Y'
-      uses: actions/checkout@v2
+      uses: tamu-it-syse/.github/checkout/Gateway-Services@v1
       with:
-        repository: tamu-it-syse/Gateway-Services
         ssh-key: ${{ secrets.GATEWAY_SERVICES_DEPLOY_KEY }}
-        path: Gateway-Services
     - name: Checkout TAMU-Account
       if: env.INCLUDE_TAMU_ACCOUNT == 'Y'
-      uses: actions/checkout@v2
+      uses: tamu-it-syse/.github/checkout/tamu-account@v1
       with:
-        repository: tamu-it-syse/tamu-account
         ssh-key: ${{ secrets.TAMU_ACCOUNT_DEPLOY_KEY }}
-        path: tamu-account        
     - name: Create Virtual Environment
-      run: |
-        python3 -m venv venv
-        venv/bin/pip install --upgrade pip pipenv
-    - name: Install Dependencies
-      run: venv/bin/pipenv install
-    - name: Install CAS Client
-      if: env.INCLUDE_CAS_CLIENT == 'Y'
-      run: venv/bin/pip install ./tamucas-client
-    - name: Install TAMU Account Library
-      if: env.INCLUDE_TAMU_ACCOUNT == 'Y'
-      run: venv/bin/pip install ./tamu-account
-    - name: Install Gateway Services Templates
-      if: env.INCLUDE_GATEWAY_SERVICES == 'Y'
-      run: venv/bin/pip install ./Gateway-Services
-    - name: Install Application
-      run: |
-        venv/bin/pip install .
-        git log --pretty=format:"%s%n%b" > venv/RELEASE-NOTES.txt
-    - name: Create tarball for venv
-      run: tar -cJf venv.tar.xz venv
-    - name: Save venv as artifact
-      uses: actions/upload-artifact@v2
+      uses: tamu-it-syse/.github/build_venv@v1
       with:
-        name: venv
-        path: venv.tar.xz
-    - name: Fix Permissions
-      run: chown -R ${{ needs.prep.outputs.docker_user }} .
-
+        runner-user: ${{ needs.prep.outputs.runner-user }}
+  
   test:
     runs-on: [self-hosted, linux, docker]
     needs: [prep, build]
@@ -103,63 +72,9 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT }}
     steps:
-    - uses: actions/checkout@v2
-    - name: Download venv artifact
-      uses: actions/download-artifact@v2
+    - uses: tamu-it-syse/.github/test_django@v1
       with:
-        name: venv
-    - name: Untar venv
-      run: tar -xf venv.tar.xz
-    - name: Install testing packages
-      run: |
-        venv/bin/pip install flake8 flake8-dashboard coverage
-    - name: Run migration
-      run: |
-        venv/bin/python manage.py migrate
-    - name: Run test coverage
-      run: |
-        venv/bin/coverage run --source="./$APPLICATION_PATH" manage.py test --keepdb --no-input
-        venv/bin/coverage html -d coverage_html
-    - name: Static analysis with flake8
-      run: |
-        venv/bin/flake8 --format=dashboard --outputdir=flake8_html --title="$APPLICATION_NAME" $APPLICATION_PATH || true
-    - name: Checkout gh-pages
-      uses: actions/checkout@v2
-      with:
-        ref: refs/heads/gh-pages
-        path: .gh-pages
-    - name: Publish Test Results
-      run: |
-        cd .gh-pages
-        GITHUB_BRANCH=$(echo $GITHUB_REF | awk -F/ '{out=$3; for(i=4;i<=NF;i++){out=out"_"$i}; print out}')
-
-        # Create branch collection item
-        mkdir -p _branches
-        cat >_branches/$GITHUB_BRANCH.md <<EOL
-        ---
-        name: $GITHUB_BRANCH
-        date: $(date)
-        ---
-        Branch $GITHUB_BRANCH reports built with GitHub Actions
-        EOL
-
-        # Remove existing branch directory (fail silently) and recreate branch directory
-        rm -rf $GITHUB_BRANCH || true
-        mkdir $GITHUB_BRANCH
-        
-        # Move report directories into branch directory
-        mv ../flake8_html $GITHUB_BRANCH/flake8
-        mv ../coverage_html $GITHUB_BRANCH/coverage
-
-        # Commit all changes and push to gh-pages branch
-        git config user.name $GITHUB_ACTOR
-        git config user.email $USERNAME@$HOSTNAME
-        git add .
-        git commit -m "Publishing Test Results for Action #$GITHUB_RUN_NUMBER"
-        git push
-    - name: Fix Permissions
-      run: chown -R ${{ needs.prep.outputs.docker_user }} .
-
+        runner-user: ${{ needs.prep.outputs.runner-user }}
 
   build-staging-rpm:
     runs-on: [self-hosted, linux, docker]
@@ -175,55 +90,20 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT }}
     steps:
-    - uses: actions/checkout@v2
-    - name: Download venv artifact
-      uses: actions/download-artifact@v2
+    - uses: tamu-it-syse/.github/build_rpm@v1
       with:
-        name: venv
-    - name: Untar venv
-      run: tar -xf venv.tar.xz
-    - name: Name Unstable RPM
-      run: |
-        sed -i "s|__NAME__|$RPM_NAME-unstable|" rpm-config.json    
-    - name: Build RPM
-      run: |
-        sed -i "s|__BUILD_NUMBER__|$GITHUB_RUN_NUMBER|" rpm-config.json
-        sed -i "s|__VERSION_NUMBER__|`python setup.py --version`|" rpm-config.json
-        sed -i "s|__VENV_DIR__|/data/venv|" rpm-config.json
-        rpmvenv /data/rpm-config.json
-    - name: Save RPM as artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: ${{ env.RPM_NAME }}-unstable.rpm
-        path: ${{ env.RPM_NAME }}-unstable*.rpm
-    - name: Fix Permissions
-      run: chown -R ${{ needs.prep.outputs.docker_user }} .
-
+        rpm-name: ${{ env.RPM_NAME }}-unstable
+        runner-user: ${{ needs.prep.outputs.runner-user }}
+    
   publish-staging-rpm:
     runs-on: [self-hosted, linux, docker]
     needs: build-staging-rpm
     steps:
-    - name: Download RPM artifact
-      uses: actions/download-artifact@v2
+    - uses: tamu-it-syse/.github/publish_rpm@v1
       with:
-        name: ${{ env.RPM_NAME }}-unstable.rpm
-    - name: Set up RPM publishing keys
-      env:
-        REPO_DEPLOY_KEY: ${{ secrets.REPO_DEPLOY_KEY }}
-      run: |
-        mkdir -p "${TMP_DIR}/${GITHUB_RUN_ID}/.ssh"
-        echo "$REPO_DEPLOY_KEY" > "${TMP_DIR}/${GITHUB_RUN_ID}/.ssh/repo-deploy-key"
-        chmod 700 ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh
-        chmod 600 ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh/*
-    - name: Publish RPM
-      env:
-        RPM_SIGNING_PASSWORD: ${{ secrets.RPM_SIGNING_PASSWORD }}
-      run: |
-        for rpm in `ls *.rpm`
-        do
-          scp -i ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh/repo-deploy-key *.rpm ${REPO_USER}@${REPO_SERVER}:~/rpms/
-          ssh -i ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh/repo-deploy-key ${REPO_USER}@${REPO_SERVER} "~/sign_rpm.sh ~/rpms/${rpm} ${RPM_SIGNING_PASSWORD} && mv ~/rpms/${rpm} ~/signed-rpms/"
-        done
+        repo-deploy-key: ${{ secrets.REPO_DEPLOY_KEY }}
+        rpm-signing-password: ${{ secrets.RPM_SIGNING_PASSWORD }}
+        rpm-name: ${{ env.RPM_NAME }}-unstable
     - name: Cleaning up
       if: ${{ always() }}
       run: |
@@ -243,63 +123,21 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT }}
     steps:
-    - uses: actions/checkout@v2
-    - name: Download venv artifact
-      uses: actions/download-artifact@v2
+    - uses: tamu-it-syse/.github/build_rpm@v1
       with:
-        name: venv
-    - name: Untar venv
-      run: tar -xf venv.tar.xz
-    - name: Set up RPM publishing keys
-      env:
-        REPO_DEPLOY_KEY: ${{ secrets.REPO_DEPLOY_KEY }}
-      run: |
-        mkdir -p "${TMP_DIR}/${GITHUB_RUN_ID}/.ssh"
-        echo "$REPO_DEPLOY_KEY" > "${TMP_DIR}/${GITHUB_RUN_ID}/.ssh/repo-deploy-key"
-        chmod 700 ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh
-        chmod 600 ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh/*
-    - name: Name Stable RPM
-      run: |
-        sed -i "s|__NAME__|$RPM_NAME|" rpm-config.json
-    - name: Build RPM
-      run: |
-        sed -i "s|__BUILD_NUMBER__|$GITHUB_RUN_NUMBER|" rpm-config.json
-        sed -i "s|__VERSION_NUMBER__|`python setup.py --version`|" rpm-config.json
-        sed -i "s|__VENV_DIR__|/data/venv|" rpm-config.json
-        rpmvenv /data/rpm-config.json
-    - name: Save RPM as artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: ${{ env.RPM_NAME }}.rpm
-        path: ${{ env.RPM_NAME }}*.rpm
-    - name: Fix Permissions
-      run: chown -R ${{ needs.prep.outputs.docker_user }} .
+        rpm-name: ${{ env.RPM_NAME }}
+        runner-user: ${{ needs.prep.outputs.runner-user }}
+    
 
   publish-production-rpm:
     runs-on: [self-hosted, linux, docker]
     needs: build-production-rpm
     steps:
-    - name: Download RPM artifact
-      uses: actions/download-artifact@v2
+    - uses: tamu-it-syse/.github/publish_rpm@v1
       with:
-        name: ${{ env.RPM_NAME }}.rpm
-    - name: Set up RPM publishing keys
-      env:
-        REPO_DEPLOY_KEY: ${{ secrets.REPO_DEPLOY_KEY }}
-      run: |
-        mkdir -p "${TMP_DIR}/${GITHUB_RUN_ID}/.ssh"
-        echo "$REPO_DEPLOY_KEY" > "${TMP_DIR}/${GITHUB_RUN_ID}/.ssh/repo-deploy-key"
-        chmod 700 ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh
-        chmod 600 ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh/*
-    - name: Publish RPM
-      env:
-        RPM_SIGNING_PASSWORD: ${{ secrets.RPM_SIGNING_PASSWORD }}
-      run: |
-        for rpm in `ls *.rpm`
-        do
-          scp -i ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh/repo-deploy-key *.rpm ${REPO_USER}@${REPO_SERVER}:~/rpms/
-          ssh -i ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh/repo-deploy-key ${REPO_USER}@${REPO_SERVER} "~/sign_rpm.sh ~/rpms/${rpm} ${RPM_SIGNING_PASSWORD} && mv ~/rpms/${rpm} ~/signed-rpms/"
-        done
+        repo-deploy-key: ${{ secrets.REPO_DEPLOY_KEY }}
+        rpm-signing-password: ${{ secrets.RPM_SIGNING_PASSWORD }}
+        rpm-name: ${{ RPM_NAME }}
     - name: Cleaning up
       if: ${{ always() }}
       run: |
