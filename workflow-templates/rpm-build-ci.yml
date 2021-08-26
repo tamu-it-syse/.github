@@ -41,6 +41,7 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT }}
     steps:
+    - uses: actions/checkout@v2
     - name: Checkout CAS Client
       if: env.INCLUDE_CAS_CLIENT == 'Y'
       uses: tamu-it-syse/.github/checkout/tamucas-client@v1

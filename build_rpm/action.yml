@@ -7,7 +7,10 @@ inputs:
   runner-user:
     description: "User ID of the github runner. Used to correct permissions when executing commands inside Docker container."
     required: false
-- uses: actions/checkout@v2
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v2
     - name: Download venv artifact
       uses: actions/download-artifact@v2
       with:

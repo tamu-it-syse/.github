@@ -10,7 +10,10 @@ inputs:
   rpm-name:
     description: Name of the rpm file. This should include -unstable for staging RPMs, but not the .rpm extension.
     required: true
-  - name: Download RPM artifact
+runs:
+  using: composite
+  steps:
+    - name: Download RPM artifact
       uses: actions/download-artifact@v2
       with:
         name: ${{ inputs.rpm-name }}.rpm
