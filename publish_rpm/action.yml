@@ -36,4 +36,3 @@ runs:
           scp -i ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh/repo-deploy-key *.rpm ${REPO_USER}@${REPO_SERVER}:~/rpms/
           ssh -i ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh/repo-deploy-key ${REPO_USER}@${REPO_SERVER} "~/sign_rpm.sh ~/rpms/${rpm} ${RPM_SIGNING_PASSWORD} && mv ~/rpms/${rpm} ~/signed-rpms/"
         done
-  post: cleanup.sh
