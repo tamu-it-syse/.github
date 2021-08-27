@@ -22,10 +22,10 @@ jobs:
   prep:
     runs-on: [self-hosted, linux, docker]
     outputs:
-      runner-user: ${{ steps.step1.outputs.runner-user }}
+      runner-user: ${{ steps.get_user.outputs.runner-user }}
     steps:
     - name: Get Runner User for use in Docker
-      id: step1
+      id: get_user
       run: |
         RUNNER_USER=$(id -u)
         echo "::set-output name=runner-user::$RUNNER_USER"
@@ -105,10 +105,6 @@ jobs:
         repo-deploy-key: ${{ secrets.REPO_DEPLOY_KEY }}
         rpm-signing-password: ${{ secrets.RPM_SIGNING_PASSWORD }}
         rpm-name: ${{ env.RPM_NAME }}-unstable
-    - name: Cleaning up
-      if: ${{ always() }}
-      run: |
-        rm -r ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh || true
         
   build-production-rpm:
     runs-on: [self-hosted, linux, docker]
@@ -139,7 +135,3 @@ jobs:
         repo-deploy-key: ${{ secrets.REPO_DEPLOY_KEY }}
         rpm-signing-password: ${{ secrets.RPM_SIGNING_PASSWORD }}
         rpm-name: ${{ env.RPM_NAME }}
-    - name: Cleaning up
-      if: ${{ always() }}
-      run: |
-        rm -r ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh || true
