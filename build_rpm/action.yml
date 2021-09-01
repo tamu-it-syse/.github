@@ -21,7 +21,7 @@ runs:
     - name: Name Unstable RPM
       shell: bash
       run: |
-        sed -i "s|__NAME__|$RPM_NAME-unstable|" rpm-config.json    
+        sed -i "s|__NAME__|${{ inputs.rpm-name }}|" rpm-config.json    
     - name: Build RPM
       shell: bash
       run: |
