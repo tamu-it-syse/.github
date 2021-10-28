@@ -1,0 +1,28 @@
+name: Clean Artifacts
+
+on:
+  workflow_run:
+    workflows: ["Build"]
+    types:
+      - completed
+
+jobs:
+  clean-artifacts:
+    runs-on: [self-hosted, linux, docker]
+    steps:
+    - name: Removing artifacts
+      uses: actions/github-script@v3
+      with:
+        script: |
+          const artifacts = await github.actions.listWorkflowRunArtifacts({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: ${{ github.event.workflow_run.id }}
+          });
+          for (const artifact of artifacts.data.artifacts) {
+            github.actions.deleteArtifact({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              artifact_id: artifact.id
+            });
+          }

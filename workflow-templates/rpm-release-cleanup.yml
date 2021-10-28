@@ -2,7 +2,7 @@ name: Clean Artifacts
 
 on:
   workflow_run:
-    workflows: ["RPM Build"]
+    workflows: ["RPM Release"]
     types:
       - completed
 

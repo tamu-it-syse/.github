@@ -1,6 +1,6 @@
 {
-    "name": "tamu-it-syse RPM Build Cleanup",
-    "description": "TAMU Systems Engineering RPM Build Cleanup workflow template.",
+    "name": "tamu-it-syse RPM Release",
+    "description": "TAMU Systems Engineering RPM Release workflow template.",
     "iconName": "tamu-logo",
     "categories": [
         "Python"

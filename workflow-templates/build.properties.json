@@ -1,0 +1,11 @@
+{
+    "name": "tamu-it-syse Build",
+    "description": "TAMU Systems Engineering Build workflow template.",
+    "iconName": "tamu-logo",
+    "categories": [
+        "Python"
+    ],
+    "filePatterns": [
+        "^setup.py$"
+    ]
+}

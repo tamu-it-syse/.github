@@ -1,6 +1,13 @@
-name: RPM Build
+name: RPM Release
 
-on: [push]
+on:
+  workflow_dispatch:
+    inputs:
+      update_type:
+        description: "Type of update (patch/minor/major)"
+        required: true
+        default: patch
+
 
 # Important! Set up Staging and Production environments for
 # your GitHub repository and configure reviewers for each.
@@ -24,6 +31,10 @@ jobs:
     outputs:
       runner-user: ${{ steps.step1.outputs.runner-user }}
     steps:
+    - name: Verify inputs
+      run: |
+        update_type=${{ github.event.inputs.update_type }}
+        [[ "$update_type" = "patch" || "$update_type" = "minor" || "$update_type" = "major" ]]
     - name: Get Runner User for use in Docker
       id: step1
       run: |
@@ -42,6 +53,25 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
     - uses: actions/checkout@v2
+    - name: Increase version
+      id: increase-version
+      run: |
+        bump2version --tag --commit ${{ github.event.inputs.update_type }} setup.py
+        git push
+        RELEASE_VERSION=$(python setup.py --version)
+        echo "::set-output name=release-version::$RELEASE_VERSION"
+    - name: Create Release
+      uses: actions/github-script@v5
+      with:
+        script: |
+          github.rest.releases.createRelease(
+            {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: v${{ steps.increase-version.outputs.release-version }},
+              generate_release_notes: true
+            }
+          )
     - name: Checkout CAS Client
       if: env.INCLUDE_CAS_CLIENT == 'Y'
       uses: tamu-it-syse/.github/checkout/tamucas-client@v1
@@ -61,61 +91,11 @@ jobs:
       uses: tamu-it-syse/.github/build_venv@v1
       with:
         runner-user: ${{ needs.prep.outputs.runner-user }}
-  
-  test:
-    runs-on: [self-hosted, linux, docker]
-    needs: [prep, build]
-    container:
-      image: ghcr.io/jzylks/centos-django-rpm:latest
-      volumes:
-        - ${{ github.workspace }}:/data
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-    - uses: tamu-it-syse/.github/test_django@v1
-      with:
-        runner-user: ${{ needs.prep.outputs.runner-user }}
 
-  build-staging-rpm:
-    runs-on: [self-hosted, linux, docker]
-    needs: [prep, test]
-    if: github.ref == 'refs/heads/main'
-    environment:
-      name: Staging
-    container:
-      image: ghcr.io/jzylks/centos-django-rpm:latest
-      volumes:
-        - ${{ github.workspace }}:/data
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-    - uses: tamu-it-syse/.github/build_rpm@v1
-      with:
-        rpm-name: ${{ env.RPM_NAME }}-unstable
-        runner-user: ${{ needs.prep.outputs.runner-user }}
-    
-  publish-staging-rpm:
-    runs-on: [self-hosted, linux, docker]
-    needs: build-staging-rpm
-    steps:
-    - uses: tamu-it-syse/.github/publish_rpm@v1
-      with:
-        repo-deploy-key: ${{ secrets.REPO_DEPLOY_KEY }}
-        rpm-signing-password: ${{ secrets.RPM_SIGNING_PASSWORD }}
-        rpm-name: ${{ env.RPM_NAME }}-unstable
-    - name: Cleaning up
-      if: ${{ always() }}
-      run: |
-        rm -r ${TMP_DIR}/${GITHUB_RUN_ID}/.ssh || true
-        
   build-production-rpm:
     runs-on: [self-hosted, linux, docker]
-    needs: [prep, publish-staging-rpm]
+    needs: [prep, build]
     if: github.ref == 'refs/heads/main'
-    environment:
-      name: Production
     container:
       image: ghcr.io/jzylks/centos-django-rpm:latest
       volumes:
@@ -128,7 +108,6 @@ jobs:
       with:
         rpm-name: ${{ env.RPM_NAME }}
         runner-user: ${{ needs.prep.outputs.runner-user }}
-    
 
   publish-production-rpm:
     runs-on: [self-hosted, linux, docker]

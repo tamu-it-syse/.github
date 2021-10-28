@@ -1,0 +1,78 @@
+name: Build
+
+on: [push]
+
+# Important! Set up Staging and Production environments for
+# your GitHub repository and configure reviewers for each.
+
+# Review environment variables below and change as necessary
+
+env:
+  TMP_DIR: /tmp/${{ github.repository }}
+  REPO_USER: github-runner
+  REPO_SERVER: jenkins-master.itio.tamu.edu
+  APPLICATION_PATH: <application path>
+  APPLICATION_NAME: <application name>
+  RPM_NAME: <rpm name>
+  INCLUDE_CAS_CLIENT: "Y"
+  INCLUDE_TAMU_ACCOUNT: "Y"
+  INCLUDE_GATEWAY_SERVICES: "Y"
+
+jobs:
+  prep:
+    runs-on: [self-hosted, linux, docker]
+    outputs:
+      runner-user: ${{ steps.step1.outputs.runner-user }}
+    steps:
+    - name: Get Runner User for use in Docker
+      id: step1
+      run: |
+        RUNNER_USER=$(id -u)
+        echo "::set-output name=runner-user::$RUNNER_USER"
+
+  build:
+    runs-on: [self-hosted, linux, docker]
+    needs: [prep]
+    container:
+      image: ghcr.io/jzylks/centos-django-rpm:latest
+      volumes:
+        - ${{ github.workspace }}:/data
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Checkout CAS Client
+      if: env.INCLUDE_CAS_CLIENT == 'Y'
+      uses: tamu-it-syse/.github/checkout/tamucas-client@v1
+      with:
+        ssh-key: ${{ secrets.TAMUCAS_CLIENT_DEPLOY_KEY }}
+    - name: Checkout Gateway-Services
+      if: env.INCLUDE_GATEWAY_SERVICES == 'Y'
+      uses: tamu-it-syse/.github/checkout/Gateway-Services@v1
+      with:
+        ssh-key: ${{ secrets.GATEWAY_SERVICES_DEPLOY_KEY }}
+    - name: Checkout TAMU-Account
+      if: env.INCLUDE_TAMU_ACCOUNT == 'Y'
+      uses: tamu-it-syse/.github/checkout/tamu-account@v1
+      with:
+        ssh-key: ${{ secrets.TAMU_ACCOUNT_DEPLOY_KEY }}
+    - name: Create Virtual Environment
+      uses: tamu-it-syse/.github/build_venv@v1
+      with:
+        runner-user: ${{ needs.prep.outputs.runner-user }}
+  
+  test:
+    runs-on: [self-hosted, linux, docker]
+    needs: [prep, build]
+    container:
+      image: ghcr.io/jzylks/centos-django-rpm:latest
+      volumes:
+        - ${{ github.workspace }}:/data
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+    - uses: tamu-it-syse/.github/test_django@v1
+      with:
+        runner-user: ${{ needs.prep.outputs.runner-user }}

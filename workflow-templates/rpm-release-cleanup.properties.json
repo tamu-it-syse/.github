@@ -1,0 +1,11 @@
+{
+    "name": "tamu-it-syse RPM Release Cleanup",
+    "description": "TAMU Systems Engineering RPM Release Cleanup workflow template.",
+    "iconName": "tamu-logo",
+    "categories": [
+        "Python"
+    ],
+    "filePatterns": [
+        "^rpm-config.json$"
+    ]
+}

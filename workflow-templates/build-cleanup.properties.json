@@ -1,0 +1,11 @@
+{
+    "name": "tamu-it-syse Build Cleanup",
+    "description": "TAMU Systems Engineering Build Cleanup workflow template.",
+    "iconName": "tamu-logo",
+    "categories": [
+        "Python"
+    ],
+    "filePatterns": [
+        "^setup.py$"
+    ]
+}
