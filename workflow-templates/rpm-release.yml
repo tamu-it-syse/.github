@@ -1,5 +1,19 @@
 name: RPM Release
 
+# Manually trigger a new RPM release:
+#   1. Increases the major/minor/patch version, based on user input
+#   2. Commits and tags new version in GitHub
+#   3. Creates a PR to merge updated version number into main branch (shim)
+#   4. Creates a Release with auto generated release notes
+#   5. Builds and publishes RPM to repository
+
+# Notes/Troubleshooting:
+# - This workflow depends on the version number in setup.py having
+#   major.minor.patch format
+# - If the project already has a setup.cfg file, the bumpversion configuration
+#   below will need to be added to the file
+
+
 on:
   workflow_dispatch:
     inputs:
@@ -8,9 +22,6 @@ on:
         required: true
         default: patch
 
-
-# Important! Set up Staging and Production environments for
-# your GitHub repository and configure reviewers for each.
 
 # Review environment variables below and change as necessary
 
@@ -44,6 +55,8 @@ jobs:
   build:
     runs-on: [self-hosted, linux, docker]
     needs: [prep]
+    outputs:
+      release-version: ${{ steps.increase-version.outputs.release-version }}
     container:
       image: ghcr.io/jzylks/centos-django-rpm:latest
       volumes:
@@ -56,22 +69,36 @@ jobs:
     - name: Increase version
       id: increase-version
       run: |
-        bump2version --tag --commit ${{ github.event.inputs.update_type }} setup.py
-        git push
+        # Initialize setup.cfg if it does not exist
+        OLD_VERSION=$(python setup.py --version)
+        if [[ ! -f setup.cfg ]]
+        then
+          echo <<EOF
+        [bumpversion]
+        current_version = $OLD_VERSION
+        commit = 1
+        tag = 1
+        EOF > setup.cfg
+        fi
+
+        # Set git name and email and clear any tags that may be present from a previous build
+        git config --global user.name '${{ github.actor }}'
+        git config --global user.email '${{ github.actor }}@users.noreply.github.com'
+        git tag -d $(git tag -l)
+
+        # Bump major/minor/patch version, commit and tag
+        bump2version --commit --tag ${{ github.event.inputs.update_type }} setup.py
+        
+        # Capture the new version number and create a new branch; branch protection rules will 
+        # not allow push directly to main branch. This adds a manual step to merge the PR, and
+        # results in the previous version bump being included in the current release's notes
         RELEASE_VERSION=$(python setup.py --version)
+        git checkout -b "release-v$RELEASE_VERSION"
+        git push -u origin "release-v$RELEASE_VERSION"
+        git push --tags
+
+        # Save release version to open the PR and create the Release
         echo "::set-output name=release-version::$RELEASE_VERSION"
-    - name: Create Release
-      uses: actions/github-script@v5
-      with:
-        script: |
-          github.rest.releases.createRelease(
-            {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: v${{ steps.increase-version.outputs.release-version }},
-              generate_release_notes: true
-            }
-          )
     - name: Checkout CAS Client
       if: env.INCLUDE_CAS_CLIENT == 'Y'
       uses: tamu-it-syse/.github/checkout/tamucas-client@v1
@@ -92,10 +119,36 @@ jobs:
       with:
         runner-user: ${{ needs.prep.outputs.runner-user }}
 
+  create-pr-and-release:
+    runs-on: [self-hosted, linux, docker]
+    needs: [prep, build]
+    steps:
+    - name: Create PR and Release
+      uses: actions/github-script@v5
+      with:
+        script: |
+          github.rest.pulls.create(
+            {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: "Finalize Release ${{ needs.build.outputs.release-version }}",
+              head: "release-v${{ needs.build.outputs.release-version }}",
+              base: "main",
+              body: "This pull request should be merged before attempting another release."
+            }
+          )
+          github.rest.repos.createRelease(
+            {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: "v${{ needs.build.outputs.release-version }}",
+              generate_release_notes: true
+            }
+          )
+
   build-production-rpm:
     runs-on: [self-hosted, linux, docker]
     needs: [prep, build]
-    if: github.ref == 'refs/heads/main'
     container:
       image: ghcr.io/jzylks/centos-django-rpm:latest
       volumes:
