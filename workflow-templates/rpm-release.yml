@@ -73,12 +73,12 @@ jobs:
         OLD_VERSION=$(python setup.py --version)
         if [[ ! -f setup.cfg ]]
         then
-          echo <<EOF
+          cat > setup.cfg <<EOF
         [bumpversion]
         current_version = $OLD_VERSION
         commit = 1
         tag = 1
-        EOF > setup.cfg
+        EOF
         fi
 
         # Set git name and email and clear any tags that may be present from a previous build
