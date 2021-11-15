@@ -1,6 +1,9 @@
 name: Build RPM
 description: Build an RPM to install the venv on CentOS
 inputs:
+  version:
+    description: Version for RPM
+    required: true
   rpm-name:
     description: Name of the rpm file. This should include -unstable for staging RPMs, but not the .rpm extension.
     required: true
@@ -26,7 +29,7 @@ runs:
       shell: bash
       run: |
         sed -i "s|__BUILD_NUMBER__|$GITHUB_RUN_NUMBER|" rpm-config.json
-        sed -i "s|__VERSION_NUMBER__|`python setup.py --version`|" rpm-config.json
+        sed -i "s|__VERSION_NUMBER__|${{ inputs.version }}|" rpm-config.json
         sed -i "s|__VENV_DIR__|$(pwd)/venv|" rpm-config.json
         venvctrl-relocate --source=$(pwd)/venv --destination=/usr/share/python/$RPM_NAME
         rpmvenv rpm-config.json
