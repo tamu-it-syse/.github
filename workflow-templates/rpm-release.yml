@@ -18,7 +18,12 @@ on:
   workflow_dispatch:
     inputs:
       update_type:
+        type: choice
         description: "Type of update (patch/minor/major)"
+        options:
+          - patch
+          - minor
+          - major
         required: true
         default: patch
 
