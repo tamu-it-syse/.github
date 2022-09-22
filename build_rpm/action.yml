@@ -14,6 +14,8 @@ runs:
   using: composite
   steps:
     - uses: actions/checkout@v2
+      with:
+        ref: release-v${{ inputs.version }}
     - name: Download venv artifact
       uses: actions/download-artifact@v2
       with:
@@ -29,7 +31,7 @@ runs:
       shell: bash
       run: |
         sed -i "s|__BUILD_NUMBER__|$GITHUB_RUN_NUMBER|" rpm-config.json
-        sed -i "s|__VERSION_NUMBER__|${{ inputs.version }}|" rpm-config.json
+        sed -i "s|__VERSION_NUMBER__|`python setup.py --version`|" rpm-config.json
         sed -i "s|__VENV_DIR__|$(pwd)/venv|" rpm-config.json
         venvctrl-relocate --source=$(pwd)/venv --destination=/usr/share/python/$RPM_NAME
         rpmvenv rpm-config.json
